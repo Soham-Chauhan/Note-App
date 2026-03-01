@@ -4,57 +4,94 @@ const fs = require("fs");
 
 const path = require("path");
 
+const archiver = require("archiver");
+
 const logActivity = require("../utils/logger");
 
 
-// create
+// ================= CREATE NOTE =================
 
-exports.createNote = async(req,res)=>{
+exports.createNote = async (req , res)=>{
 
 try{
-console.log("DATA FROM FRONTEND :",req.body);
-const {title,content}=req.body;
+
+const {title , content} = req.body;
 
 const note = await Note.create({
 
 title,
-
 content
 
 });
 
-
-// log
-
-logActivity(
-
-`NOTE_CREATED - Title: ${title}`
-
-)
+logActivity(`NOTE_CREATED - ${title}`);
 
 res.json(note);
 
-}catch(err){
+}catch(error){
 
-res.status(500).json(err);
-
-}
+res.status(500).json(error);
 
 }
 
+};
 
-// get
 
-exports.getNotes = async(req,res)=>{
+// ================= GET NOTES =================
 
-const notes = await Note.find();
+exports.getNotes = async(req , res)=>{
+
+try{
+
+const notes = await Note.find().sort({
+
+createdAt:-1
+
+});
 
 res.json(notes);
 
+}catch(error){
+
+res.status(500).json(error);
+
 }
 
+};
 
-// delete
+
+// ================= UPDATE NOTE =================
+
+exports.updateNote = async(req,res)=>{
+
+try{
+
+const {title , content} = req.body;
+
+const note = await Note.findByIdAndUpdate(
+
+req.params.id,
+
+{title , content},
+
+{new:true}
+
+);
+
+logActivity(`NOTE_UPDATED - ${title}`);
+
+res.json(note);
+
+}catch(error){
+
+res.status(500).json(error);
+
+}
+
+};
+
+
+// ================= DELETE SINGLE =================
 
 exports.deleteNote = async(req,res)=>{
 
@@ -68,26 +105,52 @@ req.params.id
 
 logActivity(
 
-`NOTE_DELETED - Title: ${note.title}`
+`NOTE_DELETED - ${note?.title}`
 
-)
+);
 
 res.json({
 
-message:"deleted"
+message:"Note Deleted"
 
-})
+});
 
-}catch(err){
+}catch(error){
 
-res.status(500).json(err);
-
-}
+res.status(500).json(error);
 
 }
 
+};
 
-// export
+
+// ================= DELETE ALL =================
+
+exports.deleteAllNotes = async(req,res)=>{
+
+try{
+
+await Note.deleteMany({});
+
+logActivity("ALL NOTES DELETED");
+
+res.json({
+
+message:"All Notes Deleted"
+
+});
+
+}catch(error){
+
+res.status(500).json(error);
+
+}
+
+};
+
+
+
+// ================= EXPORT ZIP =================
 
 exports.exportNotes = async(req,res)=>{
 
@@ -95,49 +158,81 @@ try{
 
 const notes = await Note.find();
 
-let text="";
 
+// ZIP HEADER
 
-notes.forEach((note)=>{
+res.setHeader(
 
-text+=`Title: ${note.title}\n`;
+"Content-Disposition",
 
-text+=`Content: ${note.content}\n`;
+'attachment; filename="notes.zip"'
 
-text+=`Created At: ${note.createdAt.toDateString()}\n`;
+);
 
-text+=`----------------------------\n`;
+res.setHeader(
 
-})
+"Content-Type",
 
-const filePath = path.join(
-
-__dirname,
-
-"../exports/notes.txt"
+"application/zip"
 
 );
 
 
-// create file
+// CREATE ZIP
 
-fs.writeFileSync(
+const archive = archiver("zip",{
 
-filePath,
+zlib:{level:9}
 
-text
+});
+
+archive.pipe(res);
+
+
+// ADD TXT FILE
+
+notes.forEach((note,index)=>{
+
+const text=
+
+`Title : ${note.title}
+
+${note.content}
+
+Created :
+
+${note.createdAt?.toDateString()}
+`;
+
+archive.append(
+
+text,
+
+{
+
+name:`note-${index+1}.txt`
+
+}
 
 );
 
+});
 
-// headers
 
-res.download(filePath);
+// FINALIZE
 
-}catch(err){
+archive.finalize();
 
-res.status(500).json(err);
+}catch(error){
+
+console.log(error);
+
+res.status(500).json({
+
+message:"Export Failed"
+
+});
 
 }
 
-}
+};

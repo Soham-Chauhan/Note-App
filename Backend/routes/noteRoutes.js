@@ -2,19 +2,22 @@ const express = require("express");
 
 const router = express.Router();
 
+
+// CONTROLLERS
+
 const {
 
 createNote,
-
 getNotes,
-
+updateNote,
 deleteNote,
-
+deleteAllNotes,
 exportNotes
 
-}=require("../controllers/noteController");
+} = require("../controllers/noteController");
 
 
+// CREATE
 
 router.post(
 
@@ -24,6 +27,9 @@ createNote
 
 );
 
+
+// GET
+
 router.get(
 
 "/notes",
@@ -31,6 +37,20 @@ router.get(
 getNotes
 
 );
+
+
+// UPDATE
+
+router.put(
+
+"/notes/:id",
+
+updateNote
+
+);
+
+
+// DELETE SINGLE
 
 router.delete(
 
@@ -40,12 +60,27 @@ deleteNote
 
 );
 
+
+// DELETE ALL
+
+router.delete(
+
+"/notes",
+
+deleteAllNotes
+
+);
+
+
+// EXPORT ZIP
+
 router.get(
 
-"/export",
+"/notes/export",
 
 exportNotes
 
 );
+
 
 module.exports = router;
